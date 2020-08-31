@@ -1,0 +1,59 @@
+#Run Length Encoding -pakkausalgoritmi
+#Tekijä: Markus Multamäki  2596525
+main:
+    irmovq Pino,%rbp    #Alustetaan pino
+    irmovq Pino,%rsp
+    irmovq $0x1200,%rsi #Ensimmäisen merkin paikka muistissa
+    irmovq $8,%rdx      #Askel seuraavaan muistipaikkaan
+    irmovq $0,%r8       #Uusi merkki/symboli rekisteriin r8
+    mrmovq (%rsi),%r9   #Edellinen merkki r9 (Aluksi sama kuin ensimmäinen)
+    irmovq $0,%r11      #Peräkkäisten merkkien lukumäärä
+    irmovq $1,%r12      #askelmuuttuja
+    irmovq $2,%rbx      #askelmuuttuja
+    irmovq $0,%r14      #Pinon koko, jota kasvatetaan pinoon lisättäessä
+    irmovq $100,%rcx    #Käytetään aliohjelmassa kertolasku kertojana
+    rrmovq %r10,%rdi    #Kopioidaan alkuperäisen tiedoston koko rdi rekisteriin
+loop:
+    mrmovq (%rsi),%r8   #Arvo muistipaikasta ja tallennus rekisteriin r8
+    rrmovq %r9,%r13     #Tallennetaan edellisen merkin arvo rekisteriin r13
+    subq %r8,%r9        #Tarkastetaan onko uusi merkki sama kuin edellinen
+    jne tallenna
+    addq %r12,%r11      #Kasvatetaan peräkkäisten merkkien määrää
+    addq %rdx,%rsi      #Lisätään rsi = rsi + 8
+    rrmovq %r8,%r9      #Viedään uuden merkin arvo r8 -> r9
+    subq %r12,%r10      #Jos r10 menee nollaan, kaikki merkit käsitelty
+    jne loop            #Muuten aloitetaan loop alusta.
+    pushq %r11
+    pushq %r9           #Viedään viimeinenkin merkki ja lukumäärä pinoon
+    addq %rbx,%r14      #Kasvatetaan myös rekisteriä, jossa pinon koko
+    irmovq $0,%r9       #Alustetaan r9 myöhempään käyttöön
+    call kertolasku     #Kutsutaan aliohjelmia jotka laskevat tilan säästön
+    call koko
+
+tallenna:               #Kutsutaan merkin vaihtuessa. Viedään merkki
+    pushq %r11          #ja lukumäärä pinoon.
+    pushq %r13
+    addq %rbx,%r14      #Kasvatetaan pinon kokoa kuvaavaa rekisteriä
+    rrmovq %r8,%r9      #Toteutetaan samat operaatiot kuin loopissa
+    addq %rdx,%rsi      #hyppykäskyn jälkeen
+    subq %r12,%r10
+    je koko
+    irmovq $1,%r11      #Palautetaan rekisterin r11 arvo ykköseksi
+    jmp loop            #Palataan looppiin 
+koko:                   #Aliohjelmassa laksetaan tilan säästö
+    addq %r12,%rax      #Suoritetaan jakolasku (pakattu koko/alkp. koko)
+    subq %rdi,%r9
+    jge koko
+    irmovq $100,%r8     #Asetetaan rekisteriin r8 arvo 100 vähennystä varten
+    subq %r12,%rax
+    subq %rax,%r8       #Suoritetaan vähennys ja siirretään lopullinen arvo
+    rrmovq %r8,%rax     #rekisteriin rax
+    halt                #Ohjelman suoritus päättyy
+kertolasku:             #Kerrotaan pakattua kokoa sadalla, sillä lopullinen
+    addq %r14,%r9       #prosentti lasketaan kaavalla
+    subq %r12,%rcx      #100-(100*pakattu koko/alkp. koko)
+    jne kertolasku      #Tulos löytyy rekisteristä r9
+    ret
+    
+.pos 0x1000
+Pino:
